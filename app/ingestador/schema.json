@@ -1,0 +1,59 @@
+{
+  "type": "object",
+  "properties": {
+    "id_albaran": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "fecha_emision": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "transportista": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "nombre": { "type": "string" },
+        "matricula": { "type": "string" }
+      },
+      "required": ["id", "nombre", "matricula"]
+    },
+    "cliente": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "nombre": { "type": "string" },
+        "direccion": { "type": "string" }
+      },
+      "required": ["id", "nombre", "direccion"]
+    },
+    "lineas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product_id": { "type": "integer" },
+          "descripcion": { "type": "string" },
+          "cantidad": { "type": "integer" },
+          "peso": { "type": "number" }
+        },
+        "required": ["product_id", "descripcion", "cantidad", "peso"]
+      }
+    },
+    "estado": {
+      "type": "string",
+      "enum": ["PENDIENTE", "ENTREGADO", "ENTREGADO_PARCIAL", "INCIDENCIA"]
+    },
+    "observaciones": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id_albaran",
+    "fecha_emision",
+    "transportista",
+    "cliente",
+    "lineas",
+    "estado"
+  ]
+}

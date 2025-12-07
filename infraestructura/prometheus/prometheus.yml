@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'ingestador'
+    static_configs:
+      - targets: ['ingestador:8000']
+
+  - job_name: 'recepcion'
+    static_configs:
+      - targets: ['recepcion:8000']
+
+  - job_name: 'envio_tienda'
+    static_configs:
+      - targets: ['envio_tienda:8000']
+
+  - job_name: 'recepcion_tienda'
+    static_configs:
+      - targets: ['recepcion_tienda:8000']

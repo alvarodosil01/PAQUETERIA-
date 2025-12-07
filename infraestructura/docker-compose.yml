@@ -1,0 +1,273 @@
+services:
+  # Kafka
+  kafka:
+    env_file: .env
+    build:
+      context: ${KAFKA_BUILD_CONTEXT:-build-kafka}
+    container_name: ${COMPOSE_PROJECT_NAME}_kafka
+    ports:
+      - "${KAFKA_EXTERNAL_PORT}:9092"
+      - "29092:29092"
+    environment:
+      # Configuración KRaft
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+
+      # Listeners para KRaft
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:${KAFKA_EXTERNAL_PORT}
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Configuración del cluster
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+
+      # Configuración de topics
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_NUM_PARTITIONS: "1"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      TOPICS_INICIALES: ${TOPICS_INICIALES}
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server localhost:29092
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Servicio de Base de Datos
+  db:
+    image: postgres:15
+    container_name: ${COMPOSE_PROJECT_NAME}_postgres
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: localhost
+      PGDATA: ${PGDATA}
+      ALMACEN_DB: ${ALMACEN_DB}
+      ALMACEN_USER: ${ALMACEN_USER}
+      ALMACEN_PASSWORD: ${ALMACEN_PASSWORD}
+      TIENDA_DB: ${TIENDA_DB}
+      TIENDA_USER: ${TIENDA_USER}
+      TIENDA_PASSWORD: ${TIENDA_PASSWORD}
+      LOGS_DB: ${LOGS_DB}
+      LOGS_DB_USER: ${LOGS_DB_USER}
+      LOGS_DB_PASSWORD: ${LOGS_DB_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - ./postgresql/scripts:/docker-entrypoint-initdb.d
+      - ./postgresql/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./postgresql/pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - postgres-data:/data/postgres
+    networks:
+      - default
+
+  # Interfaz de Usuario de Kafka (Kafka-UI)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.1
+    container_name: ${COMPOSE_PROJECT_NAME}_kafka-ui
+    env_file:
+      - .env
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_UI_PORT}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Ingestor de Mensajes
+  ingestador:
+    build:
+      context: ../app/ingestador
+      dockerfile: ../../infraestructura/ingestador/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME}_ingestador
+    depends_on:
+      kafka:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      INGESTOR_TOPIC: ${INGESTOR_TOPIC:-almacen}
+      INGESTOR_FREQ_MIN: ${INGESTOR_FREQ_MIN:-1.0}
+      INGESTOR_FREQ_MAX: ${INGESTOR_FREQ_MAX:-5.0}
+      ALMACEN_DB: ${ALMACEN_DB}
+      ALMACEN_USER: ${ALMACEN_USER}
+      ALMACEN_PASSWORD: ${ALMACEN_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      NUM_TIENDAS: ${NUM_TIENDAS:-800}
+    volumes:
+      - ../app/ingestador:/app
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Servicio de Recepción
+  recepcion:
+    build:
+      context: ../app/recepcion
+      dockerfile: ../../infraestructura/recepcion/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME}_recepcion
+    depends_on:
+      kafka:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      INGESTOR_TOPIC: ${INGESTOR_TOPIC:-almacen}
+      ALMACEN_DB: ${ALMACEN_DB}
+      ALMACEN_USER: ${ALMACEN_USER}
+      ALMACEN_PASSWORD: ${ALMACEN_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: ${POSTGRES_PORT}
+    volumes:
+      - ../app/recepcion:/app
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Base de Datos Documental (MongoDB)
+  mongo:
+    image: mongo:latest
+    container_name: ${COMPOSE_PROJECT_NAME}_mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Servicio de Envíos a Tienda
+  envio_tienda:
+    build:
+      context: ../app/envio_tienda
+      dockerfile: ../../infraestructura/envio_tienda/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME}_envio_tienda
+    depends_on:
+      db:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    environment:
+      ALMACEN_DB: ${ALMACEN_DB}
+      ALMACEN_USER: ${ALMACEN_USER}
+      ALMACEN_PASSWORD: ${ALMACEN_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      ENVIO_TIENDA_FREQ_MIN: ${ENVIO_TIENDA_FREQ_MIN:-1.0}
+      ENVIO_TIENDA_FREQ_MAX: ${ENVIO_TIENDA_FREQ_MAX:-5.0}
+      TARGET_STORE_ID: ${DEMO_STORE_ID}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      TIENDA_TOPIC: ${TIENDA_TOPIC:-tienda}
+    volumes:
+      - ../app/envio_tienda:/app
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Servicio de Recepción en Tienda
+  recepcion_tienda:
+    build:
+      context: ../app/recepcion_tienda
+      dockerfile: ../../infraestructura/recepcion_tienda/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME}_recepcion_tienda
+    depends_on:
+      db:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    environment:
+      TIENDA_DB: ${TIENDA_DB}
+      TIENDA_USER: ${TIENDA_USER}
+      TIENDA_PASSWORD: ${TIENDA_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      TIENDA_TOPIC: ${TIENDA_TOPIC:-tienda}
+      STORE_ID: ${DEMO_STORE_ID}
+    volumes:
+      - ../app/recepcion_tienda:/app
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ${COMPOSE_PROJECT_NAME}_prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ${COMPOSE_PROJECT_NAME}_grafana
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/etc/grafana/dashboards
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+    networks:
+      - default
+
+volumes:
+  kafka-data:
+  postgres-data:
+  mongo-data:
+
+
+networks:
+  default:
+    name: ${NETWORK_NAME:-transporte-network}
+    driver: bridge

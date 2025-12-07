@@ -1,0 +1,34 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+  - name: PostgreSQL-Tienda
+    type: postgres
+    uid: postgres-tienda
+    url: db:5432
+    database: tienda
+    user: tienda
+    secureJsonData:
+      password: tienda123
+    jsonData:
+      database: "tienda"
+      sslmode: "disable"
+      postgresVersion: 1500
+
+  - name: PostgreSQL-Almacen
+    type: postgres
+    uid: postgres-almacen
+    url: db:5432
+    database: almacen
+    user: almacen
+    secureJsonData:
+      password: almacen123
+    jsonData:
+      database: "almacen"
+      sslmode: "disable"
+      postgresVersion: 1500

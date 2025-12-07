@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "properties": {
+        "id_envio": {
+            "type": "string",
+            "format": "uuid"
+        },
+        "fecha_salida": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "tienda": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "nombre": {
+                    "type": "string"
+                },
+                "direccion": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "nombre",
+                "direccion"
+            ]
+        },
+        "lineas": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "product_id": {
+                        "type": "integer"
+                    },
+                    "cantidad": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "product_id",
+                    "cantidad"
+                ]
+            }
+        },
+        "estado": {
+            "type": "string",
+            "enum": [
+                "PREPARADO",
+                "EN_CAMINO",
+                "ENTREGADO",
+                "RECEPCIONADO"
+            ]
+        },
+        "trazabilidad": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "estado": {
+                        "type": "string"
+                    },
+                    "fecha": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "estado",
+                    "fecha"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id_envio",
+        "fecha_salida",
+        "tienda",
+        "lineas",
+        "estado",
+        "trazabilidad"
+    ]
+}
