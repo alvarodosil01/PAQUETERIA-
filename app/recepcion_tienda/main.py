@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import psycopg2
 from pymongo import MongoClient
 from kafka import KafkaConsumer
-from prometheus_client import start_http_server, Counter
+from prometheus_client import start_http_server, Counter, Gauge
 
 # Configuration
 DB_USER = os.getenv('TIENDA_USER', 'tienda')
@@ -50,6 +50,8 @@ import random
 
 # Prometheus Metrics (Updated)
 STOCKS_IN_TRANSIT = Counter('recepcion_tienda_stock_in_transit_total', 'Total stock items currently in transit')
+TRANSIT_STOCK = Gauge('recepcion_tienda_transit_stock_level', 'Current items in transit')
+STORE_STOCK = Gauge('recepcion_tienda_store_stock_level', 'Current items in store')
 
 def check_arrivals():
     """Background task to simulate truck arrival"""
@@ -57,7 +59,7 @@ def check_arrivals():
     while True:
         conn = None
         try:
-            # print("Checking for arrivals...") # Too noisy
+            print("Checking for arrivals...") 
             conn = get_pg_connection()
             cur = conn.cursor()
             
@@ -69,6 +71,7 @@ def check_arrivals():
                 WHERE fecha_salida < {cutoff_time}
             """)
             count = cur.fetchone()[0]
+            print(f"[DEBUG] Count query result: {count}")
             
             if count > 0:
                 print(f"[DEBUG] Found {count} items ready to arrive.")
@@ -130,6 +133,15 @@ def check_arrivals():
                         )
                         print(f"[DEBUG] Shipment {s_id} fully ARRIVED.")
         
+            # Update Metrics
+            cur.execute("SELECT COALESCE(SUM(cantidad), 0) FROM stock_en_camino")
+            transit_total = cur.fetchone()[0]
+            TRANSIT_STOCK.set(transit_total)
+
+            cur.execute("SELECT COALESCE(SUM(cantidad), 0) FROM inventario_tienda")
+            store_total = cur.fetchone()[0]
+            STORE_STOCK.set(store_total)
+
         except Exception as e:
             import traceback
             print(f"[ERROR] Arrival checker failed: {e}")

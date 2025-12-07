@@ -8,7 +8,8 @@ import psycopg2
 from pymongo import MongoClient
 from faker import Faker
 from kafka import KafkaProducer
-from prometheus_client import start_http_server, Counter
+from prometheus_client import start_http_server, Counter, Gauge
+from threading import Thread
 
 # Configuration
 DB_USER = os.getenv('ALMACEN_USER', 'almacen')
@@ -34,6 +35,7 @@ TARGET_STORE_ID = os.getenv('TARGET_STORE_ID')
 SHIPMENTS_GENERATED = Counter('envio_tienda_shipments_generated_total', 'Total number of shipments generated')
 MESSAGES_PRODUCED = Counter('envio_tienda_kafka_messages_produced_total', 'Total number of Kafka messages produced')
 ERRORS_TOTAL = Counter('envio_tienda_errors_total', 'Total number of errors')
+WAREHOUSE_STOCK = Gauge('warehouse_stock_total', 'Total items in warehouse')
 
 fake = Faker('es_ES')
 
@@ -192,12 +194,34 @@ def wait_for_tables():
             if conn:
                 conn.close()
 
+def update_metrics():
+    """Background task to update stock metrics"""
+    print("Starting metrics updater...")
+    while True:
+        conn = None
+        try:
+            conn = get_pg_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT COALESCE(SUM(cantidad), 0) FROM inventario")
+            total = cur.fetchone()[0]
+            WAREHOUSE_STOCK.set(total)
+        except Exception as e:
+            print(f"Error updating metrics: {e}")
+        finally:
+            if conn: conn.close()
+        time.sleep(5)
+
+
 def main():
     print("Starting Store Shipping Service...")
     
     # Start Prometheus HTTP server
     start_http_server(8000)
     print("Prometheus metrics exposed on port 8000")
+
+    # Start metrics updater
+    metrics_thread = Thread(target=update_metrics, daemon=True)
+    metrics_thread.start()
 
     wait_for_tables()
     
