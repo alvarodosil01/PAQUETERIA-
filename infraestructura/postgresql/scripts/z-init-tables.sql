@@ -54,3 +54,12 @@ CREATE TABLE IF NOT EXISTS stock_en_camino (
     fecha_salida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_estimada TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS historial_ventas (
+    id SERIAL PRIMARY KEY,
+    id_articulo VARCHAR(50),
+    cantidad INTEGER,
+    fecha DATE DEFAULT CURRENT_DATE,
+    hora TIME DEFAULT CURRENT_TIME,
+    lugar VARCHAR(100) DEFAULT 'Tienda Principal'
+);

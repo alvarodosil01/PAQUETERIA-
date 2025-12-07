@@ -801,6 +801,98 @@
             ],
             "title": "Stock History (Live Trend)",
             "type": "timeseries"
+        },
+        {
+            "id": 12,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 32
+            },
+            "type": "row",
+            "title": "Ventas (Sales Analytics)",
+            "collapsed": false
+        },
+        {
+            "id": 13,
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 0,
+                "y": 33
+            },
+            "type": "stat",
+            "title": "Ventas Totales",
+            "datasource": {
+                "uid": "Prometheus",
+                "type": "prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "ventas_total_count_total",
+                    "legendFormat": "💸 Ventas Acumuladas",
+                    "refId": "A"
+                }
+            ],
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                }
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "fixed",
+                        "fixedColor": "green"
+                    }
+                }
+            }
+        },
+        {
+            "id": 14,
+            "gridPos": {
+                "h": 8,
+                "w": 16,
+                "x": 8,
+                "y": 33
+            },
+            "type": "timeseries",
+            "title": "Evolución de Ventas",
+            "datasource": {
+                "uid": "Prometheus",
+                "type": "prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "ventas_total_count_total",
+                    "legendFormat": "📈 Ventas",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "showPoints": "auto",
+                        "lineWidth": 2,
+                        "fillOpacity": 10,
+                        "gradientMode": "opacity"
+                    }
+                }
+            }
         }
     ],
     "refresh": "5s",
