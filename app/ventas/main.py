@@ -11,6 +11,8 @@ DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DB_NAME = os.getenv("TIENDA_DB", "tienda")
 DB_USER = os.getenv("TIENDA_USER", "tienda")
 DB_PASS = os.getenv("TIENDA_PASSWORD", "tienda123")
+SALES_FREQ_MIN = float(os.getenv("SALES_FREQ_MIN", "0.5"))
+SALES_FREQ_MAX = float(os.getenv("SALES_FREQ_MAX", "2.0"))
 
 # --- Métricas Prometheus ---
 TOTAL_SALES = Counter('ventas_total_count', 'Total de ventas realizadas')
@@ -91,5 +93,5 @@ if __name__ == "__main__":
     
     while True:
         simular_venta()
-        # Espera aleatoria entre ventas (ej. 2 a 8 segundos)
-        time.sleep(random.uniform(2, 8))
+        # Espera aleatoria entre ventas
+        time.sleep(random.uniform(SALES_FREQ_MIN, SALES_FREQ_MAX))

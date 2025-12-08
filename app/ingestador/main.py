@@ -18,8 +18,8 @@ ERRORS_TOTAL = Counter('ingestador_errors_total', 'Total number of errors')
 # Configuration
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
 TOPIC_NAME = os.getenv('INGESTOR_TOPIC', 'almacen')
-FREQ_MIN = float(os.getenv('INGESTOR_FREQ_MIN', '1.0'))
-FREQ_MAX = float(os.getenv('INGESTOR_FREQ_MAX', '5.0'))
+FREQ_MIN = float(os.getenv('INGESTOR_FREQ_MIN', '0.5'))
+FREQ_MAX = float(os.getenv('INGESTOR_FREQ_MAX', '2.0'))
 
 # Initialize Faker
 fake = Faker('es_ES')
