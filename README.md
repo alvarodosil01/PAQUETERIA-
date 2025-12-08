@@ -44,10 +44,10 @@ El sistema consta de los siguientes componentes principales:
 - Docker Compose
 
 ### Ejecución
-Para construir y arrancar todos los servicios:
+Para construir y arrancar todos los servicios (la configuración ya está incluida):
 
 ```bash
-cd infraestructura
+# Estando en la carpeta infraestructura
 docker-compose up -d --build
 ```
 
