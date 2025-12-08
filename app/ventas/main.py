@@ -79,13 +79,30 @@ def simular_venta():
             (cantidad_venta, prod_id)
         )
 
-        # 6. Registrar venta en historial CON store_id
+        # 6. Registrar venta en historial CON store_id, precio y COSTE
+        # Buscamos precio y coste en el catalogo (replicado en tienda)
+        try:
+            cur.execute("SELECT precio, coste FROM catalogo WHERE product_id = %s", (prod_id,))
+            res = cur.fetchone()
+            if res:
+                precio_unitario = float(res[0])
+                coste_unitario = float(res[1])
+            else:
+                precio_unitario = 0.0
+                coste_unitario = 0.0
+            
+            ingreso_total = precio_unitario * cantidad_venta
+        except:
+            precio_unitario = 0.0
+            coste_unitario = 0.0
+            ingreso_total = 0.0
+
         cur.execute(
             """
-            INSERT INTO historial_ventas (id_articulo, store_id, cantidad, lugar)
-            VALUES (%s, %s, %s, 'Tienda ' || %s)
+            INSERT INTO historial_ventas (id_articulo, store_id, cantidad, lugar, precio_unitario, ingreso_total, coste_unitario)
+            VALUES (%s, %s, %s, 'Tienda ' || %s, %s, %s, %s)
             """,
-            (str(prod_id), store_id, cantidad_venta, str(store_id))
+            (str(prod_id), store_id, cantidad_venta, str(store_id), precio_unitario, ingreso_total, coste_unitario)
         )
 
         conn.commit()

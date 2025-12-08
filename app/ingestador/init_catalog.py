@@ -25,9 +25,15 @@ fake = Faker('es_ES')
 def get_db_engine():
     return create_engine(DATABASE_URL)
 
-def check_catalog_exists(engine):
-    inspector = inspect(engine)
-    return inspector.has_table("catalogo")
+def get_price_for_product(name):
+    # Base prices loosely based on product type
+    if 'Taladro' in name or 'Sierra' in name:
+        return random.uniform(50.0, 150.0) # Expensive tools
+    elif 'Martillo' in name or 'Llave' in name or 'Destornillador' in name:
+        return random.uniform(10.0, 30.0) # Medium tools
+    else:
+        # Consumables (Tornillos, Tuercas, etc.)
+        return random.uniform(0.10, 2.0)
 
 def create_catalog_dataset(num_products=500):
     print(f"Generating {num_products} products...")
@@ -39,17 +45,26 @@ def create_catalog_dataset(num_products=500):
         p_type = random.choice(product_types)
         description = f"{p_type} {fake.word()} {fake.random_int(min=1, max=100)}mm"
         
+        # Economics logic
+        price = round(get_price_for_product(description), 2)
+        # Cost is random 50-80% of price (20-50% margin)
+        cost = round(price * random.uniform(0.5, 0.8), 2)
+        
         data.append({
             "product_id": i + 1000, # Start IDs from 1000
             "descripcion": description,
-            "peso": round(random.uniform(0.01, 5.0), 3)
+            "peso": round(random.uniform(0.01, 5.0), 3),
+            "precio": price,
+            "coste": cost
         })
     
     df = pl.DataFrame(data)
     return df.with_columns([
         pl.col("product_id").cast(pl.Int32),
         pl.col("descripcion").cast(pl.Utf8),
-        pl.col("peso").cast(pl.Float64)
+        pl.col("peso").cast(pl.Float64),
+        pl.col("precio").cast(pl.Float64),
+        pl.col("coste").cast(pl.Float64)
     ])
 
 # Ciudades de España con sus coordenadas aproximadas
@@ -127,11 +142,12 @@ def init_stores():
         df = create_stores_dataset(num_stores)
         
         print("Writing to Almacen database...")
+        # Use sqlalchemy engine which is safer than adbc inside docker per experience
         df.write_database(
             table_name="tiendas",
             connection=DATABASE_URL,
             if_table_exists="append",
-            engine="adbc"
+            engine="sqlalchemy"
         )
         print("Stores initialized successfully in Almacen.")
 
@@ -143,12 +159,11 @@ def init_stores():
                 table_name="tiendas",
                 connection=TIENDA_DATABASE_URL,
                 if_table_exists="append",
-                engine="adbc"
+                engine="sqlalchemy"
             )
             print("Stores replicated successfully to Tienda DB.")
         except Exception as e:
             print(f"Warning: Failed to replicate stores to Tienda DB: {e}")
-            # We don't raise here to avoid failing the whole init if only the second DB part fails (though it shouldn't)
 
     except Exception as e:
         print(f"Error initializing stores: {e}")
@@ -165,7 +180,69 @@ def init_catalog():
             count = result.scalar()
             
         if count > 0:
-            print(f"Table 'catalogo' already has {count} rows. Skipping initialization.")
+            print(f"Table 'catalogo' already has {count} rows.")
+            
+            # --- MIGRATION CHECK ---
+            try:
+                # Check if 'precio' column exists
+                columns_query = text("SELECT column_name FROM information_schema.columns WHERE table_name = 'catalogo'")
+                with engine.connect() as conn:
+                    existing_columns = [row[0] for row in conn.execute(columns_query)]
+                
+                if 'precio' not in existing_columns:
+                    print("Missing columns 'precio'/'coste'. Applying migration...")
+                    # 1. Add Columns
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE catalogo ADD COLUMN IF NOT EXISTS precio DECIMAL(10, 2)"))
+                        conn.execute(text("ALTER TABLE catalogo ADD COLUMN IF NOT EXISTS coste DECIMAL(10, 2)"))
+                    
+                    print("Backfilling prices for existing products...")
+                    # 2. Update Data
+                    # We iterate and update. Using raw SQL for safety in migration.
+                    with engine.connect() as conn:
+                        products = conn.execute(text("SELECT product_id, descripcion FROM catalogo")).fetchall()
+                        with conn.begin():
+                            for pid, desc in products:
+                                price = round(get_price_for_product(desc), 2)
+                                cost = round(price * random.uniform(0.5, 0.8), 2)
+                                conn.execute(
+                                    text("UPDATE catalogo SET precio = :p, coste = :c WHERE product_id = :id"),
+                                    {"p": price, "c": cost, "id": pid}
+                                )
+                    print("Migration complete. Prices updated.")
+                else:
+                    print("Schema is up to date.")
+            except Exception as e:
+                print(f"⚠️ MIGRATION ERROR: {e}")
+                print("Continuing... the app might work but prices will be missing.")
+            
+            # --- REPLICATE EXISTING DATA TO TIENDA DB ---
+            print("Syncing existing catalog to Tienda DB...")
+            try:
+                # Read from Almacen using Polars
+                df = pl.read_database_uri("SELECT * FROM catalogo", DATABASE_URL, engine="connectorx")
+                # Write to Tienda
+                df.write_database(
+                    table_name="catalogo",
+                    connection=TIENDA_DATABASE_URL,
+                    if_table_exists="replace",
+                    engine="sqlalchemy"
+                )
+                print("Catalog synced to Tienda DB.")
+            except Exception as e:
+                # Fallback if connectorx missing, use sqlalchemy read
+                 try:
+                    df = pl.read_database("SELECT * FROM catalogo", connection=engine)
+                    df.write_database(
+                        table_name="catalogo",
+                        connection=TIENDA_DATABASE_URL,
+                        if_table_exists="replace",
+                        engine="sqlalchemy"
+                    )
+                    print("Catalog synced to Tienda DB (fallback method).")
+                 except Exception as ex:
+                    print(f"Warning: Failed to sync catalog to Tienda DB: {ex}")
+
         else:
             print("Table 'catalogo' is empty. Creating dataset...")
             df = create_catalog_dataset()
@@ -175,9 +252,22 @@ def init_catalog():
                 table_name="catalogo",
                 connection=DATABASE_URL,
                 if_table_exists="append",
-                engine="adbc"
+                engine="sqlalchemy"
             )
-            print("Catalog initialized successfully.")
+            print("Catalog initialized successfully in Almacen.")
+
+            # --- REPLICATE TO TIENDA DB ---
+            print("Replicating Catalog to Tienda database...")
+            try:
+                df.write_database(
+                    table_name="catalogo",
+                    connection=TIENDA_DATABASE_URL,
+                    if_table_exists="replace", # We sync catalog to match Almacen
+                    engine="sqlalchemy"
+                )
+                print("Catalog replicated successfully to Tienda DB.")
+            except Exception as e:
+                print(f"Warning: Failed to replicate catalog to Tienda DB: {e}")
             
         # Initialize Stores as well
         init_stores()

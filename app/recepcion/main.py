@@ -53,10 +53,31 @@ def process_message(message):
             """
             cur.execute(upsert_query, (product_id, cantidad))
             INVENTORY_UPDATES.inc()
+            
+            # --- FINANCIAL TRACKING (GASTOS) ---
+            try:
+                # 1. Get Cost
+                cur.execute("SELECT coste FROM catalogo WHERE product_id = %s", (product_id,))
+                res = cur.fetchone()
+                coste_unitario = res[0] if res else 0.0
+                
+                # 2. Calculate Total
+                coste_total = float(coste_unitario) * int(cantidad)
+                
+                # 3. Record History
+                history_query = """
+                INSERT INTO historial_recepciones (product_id, cantidad, coste_unitario, coste_total)
+                VALUES (%s, %s, %s, %s)
+                """
+                cur.execute(history_query, (product_id, cantidad, coste_unitario, coste_total))
+                # print(f"  -> Recorded cost: {coste_total}€ for item {product_id}")
+            except Exception as e:
+                print(f"Error recording cost for {product_id}: {e}")
+            # -----------------------------------
         
         conn.commit()
         cur.close()
-        print(f"Updated inventory for {len(lineas)} items.")
+        print(f"Updated inventory and costs for {len(lineas)} items.")
         MESSAGES_CONSUMED.inc()
 
     except Exception as e:

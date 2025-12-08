@@ -522,35 +522,18 @@
                 "y": 16
             },
             "id": 9,
-            "options": {
-                "colorMode": "value",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "textMode": "auto"
-            },
-            "pluginVersion": "10.0.0",
+            "title": "Stock Tienda",
+            "type": "stat",
             "targets": [
                 {
-                    "datasource": {
-                        "type": "postgres",
-                        "uid": "postgres-tienda"
-                    },
                     "format": "table",
+                    "group": [],
+                    "metricColumn": "none",
                     "rawQuery": true,
-                    "refId": "A",
-                    "rawSql": "SELECT COALESCE(SUM(cantidad), 0) as value FROM inventario_tienda"
+                    "rawSql": "SELECT COALESCE(SUM(cantidad), 0) as value FROM inventario_tienda",
+                    "refId": "A"
                 }
-            ],
-            "title": "Stock Tienda",
-            "type": "stat"
+            ]
         },
         {
             "datasource": {
@@ -995,17 +978,334 @@
                     }
                 }
             }
+        },
+        {
+            "id": 15,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 42
+            },
+            "type": "row",
+            "title": "Finanzas (Económico)",
+            "collapsed": false
+        },
+        {
+            "id": 16,
+            "type": "stat",
+            "title": "Ingresos Ventas",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 0,
+                "y": 43
+            },
+            "datasource": {
+                "uid": "postgres-tienda",
+                "type": "postgres"
+            },
+            "targets": [
+                {
+                    "format": "table",
+                    "group": [],
+                    "metricColumn": "none",
+                    "rawQuery": true,
+                    "rawSql": "SELECT SUM(ingreso_total) as value, NOW() as time FROM historial_ventas",
+                    "refId": "A",
+                    "select": [
+                        [
+                            {
+                                "params": [
+                                    "value"
+                                ]
+                            }
+                        ]
+                    ],
+                    "table": "historial_ventas"
+                }
+            ],
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                }
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "currencyEUR",
+                    "color": {
+                        "mode": "fixed",
+                        "fixedColor": "green"
+                    }
+                }
+            }
+        },
+        {
+            "id": 17,
+            "type": "stat",
+            "title": "Gastos (Coste Mercancía Tienda)",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 8,
+                "y": 43
+            },
+            "datasource": {
+                "uid": "postgres-tienda",
+                "type": "postgres"
+            },
+            "targets": [
+                {
+                    "format": "table",
+                    "group": [],
+                    "metricColumn": "none",
+                    "rawQuery": true,
+                    "rawSql": "SELECT SUM(d.cantidad * c.coste) as value, NOW() as time FROM detalle_albaran d JOIN catalogo c ON d.product_id = c.product_id",
+                    "refId": "A"
+                }
+            ],
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                }
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "currencyEUR",
+                    "color": {
+                        "mode": "fixed",
+                        "fixedColor": "red"
+                    }
+                }
+            }
+        },
+        {
+            "id": 18,
+            "type": "stat",
+            "title": "Beneficio Neto Total",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 16,
+                "y": 43
+            },
+            "datasource": {
+                "uid": "postgres-tienda",
+                "type": "postgres"
+            },
+            "targets": [
+                {
+                    "format": "table",
+                    "group": [],
+                    "metricColumn": "none",
+                    "rawQuery": true,
+                    "rawSql": "SELECT ((SELECT COALESCE(SUM(ingreso_total), 0) FROM historial_ventas) - (SELECT COALESCE(SUM(d.cantidad * c.coste), 0) FROM detalle_albaran d JOIN catalogo c ON d.product_id = c.product_id)) as value, NOW() as time",
+                    "refId": "A",
+                    "select": [
+                        [
+                            {
+                                "params": [
+                                    "value"
+                                ]
+                            }
+                        ]
+                    ],
+                    "table": "historial_ventas"
+                }
+            ],
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                }
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "currencyEUR",
+                    "color": {
+                        "mode": "fixed",
+                        "fixedColor": "light-blue"
+                    }
+                }
+            }
+        },
+        {
+            "id": 19,
+            "type": "timeseries",
+            "title": "Evolución de Beneficios (Acumulado)",
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 51
+            },
+            "datasource": {
+                "uid": "postgres-tienda",
+                "type": "postgres"
+            },
+            "targets": [
+                {
+                    "format": "table",
+                    "group": [],
+                    "metricColumn": "none",
+                    "rawQuery": true,
+                    "rawSql": "SELECT time, SUM(amount) OVER (ORDER BY time) as value, 'Beneficio Real' as metric FROM (SELECT (fecha + hora)::timestamp as time, ingreso_total as amount FROM historial_ventas UNION ALL SELECT a.fecha_recepcion::timestamp as time, -(d.cantidad * c.coste) as amount FROM detalle_albaran d JOIN albaran a ON d.albaran_id = a.id JOIN catalogo c ON d.product_id = c.product_id) t ORDER BY time",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "currencyEUR",
+                    "color": {
+                        "mode": "fixed",
+                        "fixedColor": "#0000FF"
+                    },
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "showPoints": "never",
+                        "pointSize": 5,
+                        "fillOpacity": 0,
+                        "lineWidth": 3,
+                        "gradientMode": "none",
+                        "spanNulls": false
+                    }
+                }
+            }
+        },
+        {
+            "id": 20,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 59
+            },
+            "type": "row",
+            "title": "Rankings (Top Performers)",
+            "collapsed": false
+        },
+        {
+            "id": 21,
+            "type": "bargauge",
+            "title": "Productos Más Vendidos",
+            "gridPos": {
+                "h": 10,
+                "w": 24,
+                "x": 0,
+                "y": 60
+            },
+            "datasource": {
+                "uid": "postgres-tienda",
+                "type": "postgres"
+            },
+            "targets": [
+                {
+                    "format": "table",
+                    "group": [],
+                    "metricColumn": "none",
+                    "rawQuery": true,
+                    "rawSql": "SELECT c.descripcion as name, SUM(h.cantidad) as value FROM historial_ventas h JOIN catalogo c ON CAST(h.id_articulo AS INTEGER) = c.product_id GROUP BY 1 ORDER BY 2 DESC LIMIT 10",
+                    "refId": "A"
+                }
+            ],
+            "options": {
+                "displayMode": "gradient",
+                "orientation": "horizontal",
+                "showUnfilled": true,
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": true
+                }
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "color": {
+                        "mode": "fixed",
+                        "fixedColor": "purple"
+                    }
+                }
+            }
+        },
+        {
+            "id": 22,
+            "type": "bargauge",
+            "title": "Tiendas con Más Ventas",
+            "gridPos": {
+                "h": 10,
+                "w": 24,
+                "x": 0,
+                "y": 70
+            },
+            "datasource": {
+                "uid": "postgres-tienda",
+                "type": "postgres"
+            },
+            "targets": [
+                {
+                    "format": "table",
+                    "group": [],
+                    "metricColumn": "none",
+                    "rawQuery": true,
+                    "rawSql": "SELECT t.nombre as name, SUM(h.cantidad) as value FROM historial_ventas h JOIN tiendas t ON h.store_id = t.store_id GROUP BY 1 ORDER BY 2 DESC LIMIT 10",
+                    "refId": "A"
+                }
+            ],
+            "options": {
+                "displayMode": "gradient",
+                "orientation": "horizontal",
+                "showUnfilled": true,
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": true
+                }
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "color": {
+                        "mode": "fixed",
+                        "fixedColor": "orange"
+                    }
+                }
+            }
         }
     ],
-    "refresh": "5s",
-    "schemaVersion": 38,
-    "style": "dark",
-    "tags": [],
     "templating": {
         "list": []
     },
     "time": {
-        "from": "now-15m",
+        "from": "now-12h",
         "to": "now"
     },
     "timepicker": {},

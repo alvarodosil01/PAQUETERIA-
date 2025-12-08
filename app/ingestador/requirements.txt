@@ -2,8 +2,10 @@ kafka-python-ng
 faker
 jsonschema
 polars
+pandas
+pyarrow
+connectorx
 adbc-driver-postgresql
 sqlalchemy
 psycopg2-binary
 prometheus-client
-adbc-driver-postgresql

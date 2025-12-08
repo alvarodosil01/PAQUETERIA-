@@ -5,7 +5,9 @@ SET ROLE almacen;
 CREATE TABLE IF NOT EXISTS catalogo (
     product_id INTEGER PRIMARY KEY,
     descripcion TEXT,
-    peso FLOAT
+    peso FLOAT,
+    precio DECIMAL(10, 2),
+    coste DECIMAL(10, 2)
 );
 
 CREATE TABLE IF NOT EXISTS tiendas (
@@ -22,6 +24,15 @@ CREATE TABLE IF NOT EXISTS inventario (
     cantidad INTEGER NOT NULL DEFAULT 0,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_catalogo FOREIGN KEY (product_id) REFERENCES catalogo (product_id)
+);
+
+CREATE TABLE IF NOT EXISTS historial_recepciones (
+    id SERIAL PRIMARY KEY,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    product_id INTEGER,
+    cantidad INTEGER,
+    coste_unitario DECIMAL(10, 2),
+    coste_total DECIMAL(10, 2)
 );
 
 -- Inicialización de tablas para la base de datos 'tienda'
@@ -73,5 +84,8 @@ CREATE TABLE IF NOT EXISTS historial_ventas (
     cantidad INTEGER,
     fecha DATE DEFAULT CURRENT_DATE,
     hora TIME DEFAULT CURRENT_TIME,
-    lugar VARCHAR(100) DEFAULT 'Tienda Principal'
+    lugar VARCHAR(100) DEFAULT 'Tienda Principal',
+    precio_unitario DECIMAL(10, 2),
+    ingreso_total DECIMAL(10, 2),
+    coste_unitario DECIMAL(10, 2)
 );
