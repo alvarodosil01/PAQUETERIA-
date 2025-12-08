@@ -12,7 +12,9 @@ CREATE TABLE IF NOT EXISTS tiendas (
     store_id INTEGER PRIMARY KEY,
     nombre TEXT,
     direccion TEXT,
-    ciudad TEXT
+    ciudad TEXT,
+    lat FLOAT,
+    lon FLOAT
 );
 
 CREATE TABLE IF NOT EXISTS inventario (
@@ -25,6 +27,15 @@ CREATE TABLE IF NOT EXISTS inventario (
 -- Inicialización de tablas para la base de datos 'tienda'
 \c tienda
 SET ROLE tienda;
+
+CREATE TABLE IF NOT EXISTS tiendas (
+    store_id INTEGER PRIMARY KEY,
+    nombre TEXT,
+    direccion TEXT,
+    ciudad TEXT,
+    lat FLOAT,
+    lon FLOAT
+);
 
 CREATE TABLE IF NOT EXISTS albaran (
     id SERIAL PRIMARY KEY,
@@ -58,6 +69,7 @@ CREATE TABLE IF NOT EXISTS stock_en_camino (
 CREATE TABLE IF NOT EXISTS historial_ventas (
     id SERIAL PRIMARY KEY,
     id_articulo VARCHAR(50),
+    store_id INTEGER,
     cantidad INTEGER,
     fecha DATE DEFAULT CURRENT_DATE,
     hora TIME DEFAULT CURRENT_TIME,

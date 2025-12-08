@@ -18,8 +18,8 @@ ERRORS_TOTAL = Counter('ingestador_errors_total', 'Total number of errors')
 # Configuration
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
 TOPIC_NAME = os.getenv('INGESTOR_TOPIC', 'almacen')
-FREQ_MIN = float(os.getenv('INGESTOR_FREQ_MIN', '0.5'))
-FREQ_MAX = float(os.getenv('INGESTOR_FREQ_MAX', '2.0'))
+INGESTOR_FREQ_MIN = float(os.getenv('INGESTOR_FREQ_MIN', '1.0'))
+INGESTOR_FREQ_MAX = float(os.getenv('INGESTOR_FREQ_MAX', '5.0'))
 
 # Initialize Faker
 fake = Faker('es_ES')
@@ -120,16 +120,34 @@ def main():
             ERRORS_TOTAL.inc()
             time.sleep(5)
 
+    # Database engine for stock check
+    engine = init_catalog.get_db_engine()
+    WAREHOUSE_MAX_CAPACITY = 5000
+
     while True:
         try:
+            # --- CAPACITY CHECK ---
+            with engine.connect() as conn:
+                try:
+                    result = conn.execute(init_catalog.text("SELECT COALESCE(SUM(cantidad), 0) FROM inventario"))
+                    current_stock = result.scalar()
+                    
+                    if current_stock >= WAREHOUSE_MAX_CAPACITY:
+                        print(f"[PAUSED] Warehouse Full ({current_stock}/{WAREHOUSE_MAX_CAPACITY}). Waiting for space...")
+                        time.sleep(5)
+                        continue # Skip generation loop
+                except Exception as db_e:
+                    print(f"Warning: Could not check stock level: {db_e}")
+            # ----------------------
+
             msg = generate_message(products_df)
             producer.send(TOPIC_NAME, msg)
             producer.flush()
             print(f"Sent: {msg['id_albaran']}")
             MESSAGES_PRODUCED.inc()
             
-            sleep_time = random.uniform(FREQ_MIN, FREQ_MAX)
-            time.sleep(sleep_time)
+            # Simular espera variable
+            time.sleep(random.uniform(INGESTOR_FREQ_MIN, INGESTOR_FREQ_MAX))
         except Exception as e:
             print(f"Error sending message: {e}")
             ERRORS_TOTAL.inc()

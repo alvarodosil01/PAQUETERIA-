@@ -75,9 +75,44 @@ def get_available_products(cur):
     cur.execute("SELECT product_id, cantidad FROM inventario WHERE cantidad > 0 ORDER BY RANDOM() LIMIT 10")
     return cur.fetchall()
 
+# Tienda DB Config
+TIENDA_DB_USER = os.getenv('TIENDA_USER', 'tienda')
+TIENDA_DB_PASSWORD = os.getenv('TIENDA_PASSWORD', 'tienda123')
+TIENDA_DB_NAME = os.getenv('TIENDA_DB', 'tienda')
+
+def get_tienda_connection():
+    return psycopg2.connect(
+        host=DB_HOST,
+        user=TIENDA_DB_USER,
+        password=TIENDA_DB_PASSWORD,
+        dbname=TIENDA_DB_NAME,
+        port=DB_PORT
+    )
+
 def generate_shipment(producer):
     conn = None
+    tienda_conn = None
     try:
+        # --- STORE CAPACITY CHECK ---
+        STORE_MAX_CAPACITY = 2000
+        try:
+            tienda_conn = get_tienda_connection()
+            with tienda_conn.cursor() as t_cur:
+                 # Check existing table
+                t_cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'inventario_tienda')")
+                if t_cur.fetchone()[0]:
+                    t_cur.execute("SELECT COALESCE(SUM(cantidad), 0) FROM inventario_tienda")
+                    current_store_stock = t_cur.fetchone()[0]
+                    
+                    if current_store_stock >= STORE_MAX_CAPACITY:
+                        print(f"[PAUSED] Stores Full (Global Stock: {current_store_stock}/{STORE_MAX_CAPACITY}). Waiting for sales...")
+                        return
+        except Exception as e:
+            print(f"Warning: Could not check store capacity: {e}")
+        finally:
+             if tienda_conn: tienda_conn.close()
+        # ----------------------------
+
         conn = get_pg_connection()
         cur = conn.cursor()
         

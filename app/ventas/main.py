@@ -42,42 +42,57 @@ def simular_venta():
     try:
         cur = conn.cursor()
         
-        # 1. Buscar productos con stock disponible
+        # 1. Elegir una tienda aleatoria
+        cur.execute("SELECT store_id FROM tiendas ORDER BY RANDOM() LIMIT 1")
+        tienda = cur.fetchone()
+        
+        if not tienda:
+             print("[INFO] No hay tiendas registradas.")
+             return
+
+        store_id = tienda[0]
+
+        # 2. Buscar productos con stock disponible EN ESA TIENDA (Simplificación: Asumimos inventario global visualizado localmente o inventario por tienda real)
+        # Nota: El esquema original tenía 'inventario_tienda' sin store_id, asumiendo una sola tienda o stock agregado.
+        # Para hacerlo realista con el mapa, deberíamos tener inventario POR tienda.
+        # Dado que el usuario pidió mapa de VENTAS, vamos a simular que la venta ocurre en esa tienda, aunque descontemos del stock "agregado" por ahora 
+        # (para no refactorizar TODO el modelo de inventario ahora mismo, lo cual rompería 'recepcion_tienda' etc).
+        
         cur.execute("SELECT product_id, cantidad FROM inventario_tienda WHERE cantidad > 0")
         productos = cur.fetchall()
 
         if not productos:
-            print("[INFO] No hay stock para vender. Esperando reposición...")
+            # print("[INFO] No hay stock global para vender...")
             return
 
-        # 2. Elegir producto aleatorio
+        # 3. Elegir producto aleatorio
         producto = random.choice(productos)
         prod_id = producto[0]
         stock_actual = producto[1]
         
-        # 3. Determinar cantidad a vender (1 a 5, o lo que quede)
+        # 4. Determinar cantidad a vender
         cantidad_venta = random.randint(1, min(5, stock_actual))
 
-        # 4. Actualizar inventario (Restar stock)
+        # 5. Actualizar inventario (Restar stock global)
         cur.execute(
             "UPDATE inventario_tienda SET cantidad = cantidad - %s WHERE product_id = %s",
             (cantidad_venta, prod_id)
         )
 
-        # 5. Registrar venta en historial
+        # 6. Registrar venta en historial CON store_id
         cur.execute(
             """
-            INSERT INTO historial_ventas (id_articulo, cantidad, lugar)
-            VALUES (%s, %s, 'Tienda Principal')
+            INSERT INTO historial_ventas (id_articulo, store_id, cantidad, lugar)
+            VALUES (%s, %s, %s, 'Tienda ' || %s)
             """,
-            (str(prod_id), cantidad_venta)
+            (str(prod_id), store_id, cantidad_venta, str(store_id))
         )
 
         conn.commit()
         
-        # 6. Actualizar Métricas
+        # 7. Actualizar Métricas
         TOTAL_SALES.inc(cantidad_venta)
-        print(f"[VENTA] Artículo {prod_id} | Cantidad: {cantidad_venta} | Stock restante: {stock_actual - cantidad_venta}")
+        # print(f"[VENTA] Tienda {store_id} | Art {prod_id} | Qty {cantidad_venta}")
 
     except Exception as e:
         print(f"[ERROR] Fallo en venta: {e}")
@@ -88,8 +103,8 @@ def simular_venta():
 
 # --- Main Loop ---
 if __name__ == "__main__":
-    print("Iniciando servicio de VENTAS...")
-    start_http_server(8004) # Exponer métricas en puerto 8004
+    print("Iniciando servicio de VENTAS (Crazy Mode)...")
+    start_http_server(8004) 
     
     while True:
         simular_venta()

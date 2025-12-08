@@ -799,8 +799,110 @@
                     "refId": "C"
                 }
             ],
-            "title": "Stock History (Live Trend)",
+            "title": "Niveles de Stock (Live)",
             "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "postgres",
+                "uid": "postgres-tienda"
+            },
+            "gridPos": {
+                "h": 14,
+                "w": 24,
+                "x": 0,
+                "y": 32
+            },
+            "id": 11,
+            "options": {
+                "basemap": {
+                    "config": {},
+                    "name": "Layer 0",
+                    "type": "carto"
+                },
+                "controls": {
+                    "mouseWheelZoom": true,
+                    "showAttribution": true,
+                    "showDebug": false,
+                    "showMeasure": false,
+                    "showScale": false,
+                    "showZoom": true
+                },
+                "layers": [
+                    {
+                        "config": {
+                            "showLegend": true,
+                            "style": {
+                                "color": {
+                                    "field": "ventas",
+                                    "fixed": "dark-green",
+                                    "mode": "fixed"
+                                },
+                                "opacity": 0.5,
+                                "rotation": {
+                                    "fixed": 0,
+                                    "mode": "fixed"
+                                },
+                                "size": {
+                                    "field": "ventas",
+                                    "fixed": 10,
+                                    "max": 30,
+                                    "min": 5,
+                                    "mode": "field"
+                                },
+                                "symbol": {
+                                    "fixed": "img/icons/marker/circle.svg",
+                                    "mode": "fixed"
+                                },
+                                "text": {
+                                    "field": "nombre",
+                                    "fixed": "",
+                                    "mode": "field"
+                                },
+                                "textConfig": {
+                                    "fontSize": 12,
+                                    "offsetX": 0,
+                                    "offsetY": 0,
+                                    "textAlign": "center",
+                                    "textBaseline": "bottom"
+                                }
+                            },
+                            "tooltip": true
+                        },
+                        "location": {
+                            "latitude": "lat",
+                            "longitude": "lon",
+                            "mode": "coords"
+                        },
+                        "name": "Ventas por Tienda",
+                        "type": "markers"
+                    }
+                ],
+                "tooltip": {
+                    "mode": "details"
+                },
+                "view": {
+                    "id": "europe",
+                    "lat": 40.4168,
+                    "lon": -3.7038,
+                    "shared": false,
+                    "zoom": 5
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "postgres",
+                        "uid": "postgres-tienda"
+                    },
+                    "format": "table",
+                    "rawQuery": true,
+                    "refId": "A",
+                    "rawSql": "SELECT t.nombre, t.lat, t.lon, COUNT(h.id) as ventas FROM historial_ventas h JOIN tiendas t ON h.store_id = t.store_id GROUP BY t.store_id, t.nombre, t.lat, t.lon ORDER BY ventas DESC LIMIT 500"
+                }
+            ],
+            "title": "Mapa de Calor de Ventas",
+            "type": "geomap"
         },
         {
             "id": 12,
