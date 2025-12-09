@@ -15,7 +15,7 @@
             }
         ]
     },
-    "editable": true,
+    "editable": false,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 0,
     "id": 1,
@@ -1051,7 +1051,7 @@
         {
             "id": 17,
             "type": "stat",
-            "title": "Gastos (Coste Mercancía Tienda)",
+            "title": "Gastos (Coste Ingesta Almacén)",
             "gridPos": {
                 "h": 8,
                 "w": 8,
@@ -1059,7 +1059,7 @@
                 "y": 43
             },
             "datasource": {
-                "uid": "postgres-tienda",
+                "uid": "postgres-almacen",
                 "type": "postgres"
             },
             "targets": [
@@ -1068,7 +1068,7 @@
                     "group": [],
                     "metricColumn": "none",
                     "rawQuery": true,
-                    "rawSql": "SELECT SUM(d.cantidad * c.coste) as value, NOW() as time FROM detalle_albaran d JOIN catalogo c ON d.product_id = c.product_id",
+                    "rawSql": "SELECT SUM(coste_total) as value, NOW() as time FROM historial_recepciones",
                     "refId": "A"
                 }
             ],
@@ -1106,27 +1106,46 @@
                 "y": 43
             },
             "datasource": {
-                "uid": "postgres-tienda",
-                "type": "postgres"
+                "uid": "-- Mixed --",
+                "type": "datasource"
             },
             "targets": [
                 {
+                    "datasource": {
+                        "type": "postgres",
+                        "uid": "postgres-tienda"
+                    },
                     "format": "table",
                     "group": [],
                     "metricColumn": "none",
                     "rawQuery": true,
-                    "rawSql": "SELECT ((SELECT COALESCE(SUM(ingreso_total), 0) FROM historial_ventas) - (SELECT COALESCE(SUM(d.cantidad * c.coste), 0) FROM detalle_albaran d JOIN catalogo c ON d.product_id = c.product_id)) as value, NOW() as time",
+                    "rawSql": "SELECT COALESCE(SUM(ingreso_total), 0) as value FROM historial_ventas",
                     "refId": "A",
-                    "select": [
-                        [
-                            {
-                                "params": [
-                                    "value"
-                                ]
-                            }
-                        ]
-                    ],
-                    "table": "historial_ventas"
+                    "hide": true
+                },
+                {
+                    "datasource": {
+                        "type": "postgres",
+                        "uid": "postgres-almacen"
+                    },
+                    "format": "table",
+                    "group": [],
+                    "metricColumn": "none",
+                    "rawQuery": true,
+                    "rawSql": "SELECT COALESCE(SUM(coste_total), 0) as value FROM historial_recepciones",
+                    "refId": "B",
+                    "hide": true
+                },
+                {
+                    "datasource": {
+                        "name": "Expression",
+                        "type": "__expr__",
+                        "uid": "__expr__"
+                    },
+                    "expression": "$A - $B",
+                    "hide": false,
+                    "refId": "C",
+                    "type": "math"
                 }
             ],
             "options": {
@@ -1155,7 +1174,7 @@
         {
             "id": 19,
             "type": "timeseries",
-            "title": "Evolución de Beneficios (Acumulado)",
+            "title": "Evolución de Beneficios (Neto por Hora)",
             "gridPos": {
                 "h": 8,
                 "w": 24,
@@ -1163,17 +1182,46 @@
                 "y": 51
             },
             "datasource": {
-                "uid": "postgres-tienda",
-                "type": "postgres"
+                "uid": "-- Mixed --",
+                "type": "datasource"
             },
             "targets": [
                 {
-                    "format": "table",
+                    "datasource": {
+                        "type": "postgres",
+                        "uid": "postgres-tienda"
+                    },
+                    "format": "time_series",
                     "group": [],
                     "metricColumn": "none",
                     "rawQuery": true,
-                    "rawSql": "SELECT time, SUM(amount) OVER (ORDER BY time) as value, 'Beneficio Real' as metric FROM (SELECT (fecha + hora)::timestamp as time, ingreso_total as amount FROM historial_ventas UNION ALL SELECT a.fecha_recepcion::timestamp as time, -(d.cantidad * c.coste) as amount FROM detalle_albaran d JOIN albaran a ON d.albaran_id = a.id JOIN catalogo c ON d.product_id = c.product_id) t ORDER BY time",
-                    "refId": "A"
+                    "rawSql": "SELECT series as time, COALESCE(SUM(ingreso_total), 0) as value FROM generate_series($__timeFrom()::timestamp, $__timeTo()::timestamp, '1m'::interval) as series LEFT JOIN historial_ventas ON date_trunc('minute', fecha + hora) = date_trunc('minute', series) GROUP BY 1 ORDER BY 1",
+                    "refId": "A",
+                    "hide": true
+                },
+                {
+                    "datasource": {
+                        "type": "postgres",
+                        "uid": "postgres-almacen"
+                    },
+                    "format": "time_series",
+                    "group": [],
+                    "metricColumn": "none",
+                    "rawQuery": true,
+                    "rawSql": "SELECT series as time, COALESCE(SUM(coste_total), 0) as value FROM generate_series($__timeFrom()::timestamp, $__timeTo()::timestamp, '1m'::interval) as series LEFT JOIN historial_recepciones ON date_trunc('minute', fecha) = date_trunc('minute', series) GROUP BY 1 ORDER BY 1",
+                    "refId": "B",
+                    "hide": true
+                },
+                {
+                    "datasource": {
+                        "name": "Expression",
+                        "type": "__expr__",
+                        "uid": "__expr__"
+                    },
+                    "expression": "$A - $B",
+                    "hide": false,
+                    "refId": "C",
+                    "type": "math"
                 }
             ],
             "fieldConfig": {
@@ -1181,15 +1229,15 @@
                     "unit": "currencyEUR",
                     "color": {
                         "mode": "fixed",
-                        "fixedColor": "#0000FF"
+                        "fixedColor": "#00FF00"
                     },
                     "custom": {
                         "drawStyle": "line",
                         "lineInterpolation": "linear",
-                        "showPoints": "never",
+                        "showPoints": "auto",
                         "pointSize": 5,
                         "fillOpacity": 0,
-                        "lineWidth": 3,
+                        "lineWidth": 2,
                         "gradientMode": "none",
                         "spanNulls": false
                     }
@@ -1305,13 +1353,22 @@
         "list": []
     },
     "time": {
-        "from": "now-12h",
+        "from": "now-15m",
         "to": "now"
     },
-    "timepicker": {},
-    "timezone": "",
-    "title": "Transport System Dashboard",
-    "uid": "transport-dashboard",
+    "timepicker": {
+        "refresh_intervals": [
+            "5s",
+            "10s",
+            "30s",
+            "1m",
+            "5m"
+        ]
+    },
+    "timezone": "browser",
+    "title": "Transport Dashboard (Live)",
+    "uid": "transport-dashboard-final",
     "version": 1,
-    "weekStart": ""
+    "weekStart": "",
+    "refresh": "5s"
 }
