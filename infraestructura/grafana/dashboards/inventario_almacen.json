@@ -269,7 +269,7 @@
                     "editorMode": "code",
                     "format": "table",
                     "rawQuery": true,
-                    "rawSql": "SELECT c.descripcion as metric, i.cantidad as value FROM inventario i JOIN catalogo c ON i.product_id = c.product_id ORDER BY i.cantidad DESC",
+                    "rawSql": "SELECT c.descripcion as metric, i.cantidad as value FROM inventario i JOIN catalogo c ON i.product_id = c.product_id ORDER BY i.cantidad DESC LIMIT 50",
                     "refId": "A"
                 }
             ],
