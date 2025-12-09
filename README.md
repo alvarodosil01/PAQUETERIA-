@@ -55,7 +55,7 @@ docker-compose up -d --build
 - **Kafka UI**: Disponible en `http://localhost:8080`.
 - **MongoDB**: Conexión en `mongodb://admin:admin123@localhost:27017`.
 - **PostgreSQL**: Puerto `5432`.
-- **Grafana**: Disponible en `http://localhost:3000`.
+- **Grafana**: Disponible en `http://localhost:3001`.
 
 ## Credenciales y Accesos
 
@@ -63,7 +63,7 @@ Para la demostración, se han configurado las siguientes credenciales por defect
 
 | Servicio | URL / Host | Usuario | Contraseña | Notas |
 |----------|------------|---------|------------|-------|
-| **Grafana** | `http://localhost:3000` | `admin` | `admin` | Dashboard de monitorización |
+| **Grafana** | `http://localhost:3001` | `admin` | `admin` | Dashboard de monitorización |
 | **Kafka UI** | `http://localhost:8080` | - | - | Visualización de topics y mensajes |
 | **MongoDB** | `localhost:27017` | `admin` | `admin123` | Base de datos de envíos |
 | **PostgreSQL** | `localhost:5432` | `almacen` | `almacen123` | DB Almacén (Base de datos: `almacen`) |
