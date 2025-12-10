@@ -632,7 +632,7 @@
                         "percent"
                     ]
                 },
-                "pieType": "pie",
+                "pieType": "donut",
                 "reduceOptions": {
                     "calcs": [
                         "lastNotNull"
@@ -659,11 +659,11 @@
                     "editorMode": "code",
                     "format": "table",
                     "rawQuery": true,
-                    "rawSql": "SELECT c.descripcion as metric, (i.cantidad * c.coste) as value FROM inventario i JOIN catalogo c ON i.product_id = c.product_id ORDER BY value DESC LIMIT 10",
+                    "rawSql": "SELECT split_part(c.descripcion, ' ', 1) as metric, SUM(i.cantidad) as value FROM inventario i JOIN catalogo c ON i.product_id = c.product_id GROUP BY 1 ORDER BY value DESC",
                     "refId": "A"
                 }
             ],
-            "title": "💰 Distribución de Valor de Inventario (Top 10)",
+            "title": "📦 Stock por Categoría",
             "type": "piechart"
         },
         {
@@ -674,47 +674,25 @@
             "fieldConfig": {
                 "defaults": {
                     "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "Unidades ingresadas",
-                        "axisPlacement": "auto",
-                        "barAlignment": 0,
-                        "drawStyle": "bars",
-                        "fillOpacity": 80,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "insertNulls": false,
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "auto",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "normal"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
+                        "mode": "thresholds"
                     },
                     "mappings": [],
+                    "min": 0,
+                    "max": 5000,
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
                             {
                                 "color": "green",
                                 "value": null
+                            },
+                            {
+                                "color": "#EAB839",
+                                "value": 4000
+                            },
+                            {
+                                "color": "red",
+                                "value": 4900
                             }
                         ]
                     },
@@ -730,19 +708,16 @@
             },
             "id": 9,
             "options": {
-                "legend": {
+                "reduceOptions": {
+                    "values": false,
                     "calcs": [
-                        "sum",
-                        "mean"
+                        "lastNotNull"
                     ],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": true
+                    "fields": ""
                 },
-                "tooltip": {
-                    "mode": "multi",
-                    "sort": "none"
-                }
+                "orientation": "auto",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true
             },
             "targets": [
                 {
@@ -752,14 +727,14 @@
                         "uid": "postgres-almacen"
                     },
                     "editorMode": "code",
-                    "format": "time_series",
+                    "format": "table",
                     "rawQuery": true,
-                    "rawSql": "SELECT \n  date_trunc('hour', fecha) as time,\n  SUM(cantidad) as value\nFROM historial_recepciones \nWHERE fecha >= NOW() - INTERVAL '24 hours'\nGROUP BY time\nORDER BY time ASC",
+                    "rawSql": "SELECT SUM(cantidad) as value FROM inventario",
                     "refId": "A"
                 }
             ],
-            "title": "📊 Tasa de Ingreso por Hora (últimas 24h)",
-            "type": "timeseries"
+            "title": "⚠️ Nivel de Ocupación del Almacén",
+            "type": "gauge"
         }
     ],
     "preload": false,
