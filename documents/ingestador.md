@@ -7,6 +7,7 @@ El servicio `ingestador` es el punto de entrada de datos del sistema. Su funció
 1.  **Inicialización de Datos Maestros**: Al arrancar, verifica y puebla las tablas `catalogo` (productos) y `tiendas` en la base de datos PostgreSQL `almacen`.
 2.  **Generación de Albaranes**: Genera periódicamente albaranes de entrada con productos aleatorios del catálogo.
 3.  **Publicación en Kafka**: Publica los albaranes generados en el topic configurado (por defecto `almacen`) para que sean procesados por otros servicios.
+4.  **Control de Capacidad**: Verifica la capacidad del almacén (Límite: 5000 unidades) y detiene la generación de pedidos si se alcanza este máximo, reanudándola solo cuando se libera espacio (ventas).
 
 ## Tecnologías
 - **Lenguaje**: Python 3.12

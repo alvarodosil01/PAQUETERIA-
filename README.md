@@ -44,10 +44,10 @@ El sistema consta de los siguientes componentes principales:
 - Docker Compose
 
 ### Ejecución
-Para construir y arrancar todos los servicios:
+Para construir y arrancar todos los servicios (la configuración ya está incluida):
 
 ```bash
-cd infraestructura
+# Estando en la carpeta infraestructura
 docker-compose up -d --build
 ```
 
@@ -56,7 +56,15 @@ docker-compose up -d --build
 - **MongoDB**: Conexión en `mongodb://admin:admin123@localhost:27017`.
 - **PostgreSQL**: Puerto `5432`.
 - **Grafana**: Disponible en `http://localhost:3001`.
+    - Dashboard Principal: "Inventario Almacén" (Métricas de negocio y operativas).
 
+## Paneles de Control (Dashboards)
+
+El sistema incluye un dashboard especializado ("Inventario Almacén") diseñado para operar incluso en condiciones de saturación de inventario:
+
+1.  **Nivel de Ocupación (Gauge)**: Monitoriza el límite de capacidad (5000 unidades) para explicar pausas en la ingestión.
+2.  **Valor de Inventario**: Identifica los activos de mayor valor financiero.
+3.  **Composición por Categoría**: Desglose del stock por tipos de producto.
 ## Credenciales y Accesos
 
 Para la demostración, se han configurado las siguientes credenciales por defecto:

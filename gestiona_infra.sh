@@ -184,6 +184,25 @@ ejecutar_limpieza() {
 # Funciones de Listado (lista_servicios_ordenados.sh)
 # ==========================================
 
+# Devuelve la lista de servicios (un nombre por línea)
+obtener_servicios() {
+    local f="$COMPOSE_FILE"
+    if [[ ! -f "$f" ]]; then
+        return 1
+    fi
+
+    # Se buscan el inicio y fin de la sección services:
+    mapfile -t lineas < <(
+        sed -nE '/^[^[:space:]]/{=;p;}' "$f" | sed 'N;s/\n/: /' | sed -n '/: *services:$/ {p; n; p; q}' | awk '{l=split($0,datos,":");print datos[1]}'
+    )
+
+    if [[ ${#lineas[@]} -ge 2 ]]; then
+        inicio=$(( lineas[0] + 1 ))
+        fin=$(( lineas[1] - 1 ))
+        sed -n "${inicio},${fin}p" "$f" | sed -nE 's/^  ([^[:space:]]+):[[:space:]]*$/\1/p'
+    fi
+}
+
 ejecutar_listado() {
     local f="$COMPOSE_FILE"
     if [[ ! -f "$f" ]]; then
@@ -191,22 +210,33 @@ ejecutar_listado() {
         exit 1
     fi
 
-    # Se buscan el inicio y fin de la sección services:
-    mapfile  -t lineas < <(
-    sed -nE '/^[^[:space:]]/{=;p;}' "$f" | sed 'N;s/\n/: /' | sed -n '/: *services:$/ {p; n; p; q}' | awk '{l=split($0,datos,":");print datos[1]}'
-    )
-    # Se buscan las líneas que empiezan con dos espacios, 
-    # luego un nombre de servicio (sin espacios), luego dos puntos 
-    # y opcionalmente espacios.
-    if [[ ${#lineas[@]} -ge 2 ]]; then
-        inicio=$(( lineas[0] + 1 ))
-        fin=$(( lineas[1] - 1 ))
-        printf "Leyendo %s (líneas %d a %d)\n" "$f" "${inicio}" "${fin}" >&2
-        printf "##########################################################\n" >&2
-
-        sed -n "${inicio},${fin}p" "$f" | sed -nE 's/^  ([^[:space:]]+):[[:space:]]*$/\1/p'
+    # Se obtienen los servicios usando la función auxiliar
+    if mapfile -t servicios < <(obtener_servicios) && [[ ${#servicios[@]} -gt 0 ]]; then
+         printf "Leyendo %s\n" "$f" >&2
+         printf "##########################################################\n" >&2
+         printf "%s\n" "${servicios[@]}"
     else
-        echo "No se pudo determinar la sección 'services' en $f"
+        echo "No se pudo determinar la sección 'services' en $f o está vacía."
+    fi
+}
+
+validar_servicio() {
+    local servicio="$1"
+    mapfile -t servicios_validos < <(obtener_servicios)
+    
+    local encontrado="no"
+    for s in "${servicios_validos[@]}"; do
+        if [[ "$s" == "$servicio" ]]; then
+            encontrado="si"
+            break
+        fi
+    done
+
+    if [[ "$encontrado" == "no" ]]; then
+        echo "Error: El servicio '$servicio' no existe en $COMPOSE_FILE."
+        echo "Servicios disponibles:"
+        printf "  - %s\n" "${servicios_validos[@]}"
+        exit 1
     fi
 }
 
@@ -279,6 +309,7 @@ case "$1" in
         exit 1
       fi
       SERVICE_NAME="$2"
+      validar_servicio "$SERVICE_NAME"
       echo "Forzando build y arranque de servicio: $SERVICE_NAME..."
       docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build --force-recreate --no-deps "$SERVICE_NAME"
       echo "Servicio $SERVICE_NAME reconstruido y arrancado."
@@ -349,6 +380,7 @@ case "$1" in
       exit 1
     fi
     SERVICE_NAME="$2"
+    validar_servicio "$SERVICE_NAME"
     echo "Arrancando servicio: $SERVICE_NAME..."
     docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build "$SERVICE_NAME"
     echo "Servicio $SERVICE_NAME arrancado."
@@ -363,6 +395,7 @@ case "$1" in
       exit 1
     fi
     SERVICE_NAME="$2"
+    validar_servicio "$SERVICE_NAME"
     echo "Deteniendo servicio: $SERVICE_NAME..."
     docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" stop "$SERVICE_NAME"
     echo "Servicio $SERVICE_NAME detenido."
@@ -377,6 +410,7 @@ case "$1" in
       exit 1
     fi
     SERVICE_NAME="$2"
+    validar_servicio "$SERVICE_NAME"
     echo "Reiniciando servicio: $SERVICE_NAME..."
     docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" restart "$SERVICE_NAME"
     echo "Servicio $SERVICE_NAME reiniciado."
@@ -391,6 +425,7 @@ case "$1" in
       exit 1
     fi
     SERVICE_NAME="$2"
+    validar_servicio "$SERVICE_NAME"
     echo "Mostrando logs de: $SERVICE_NAME..."
     docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" logs -f "$SERVICE_NAME"
     ;;

@@ -47,8 +47,8 @@ def create_catalog_dataset(num_products=500):
         
         # Economics logic
         price = round(get_price_for_product(description), 2)
-        # Cost is random 50-80% of price (20-50% margin)
-        cost = round(price * random.uniform(0.5, 0.8), 2)
+        # Cost is random 50-80% of price (50-70% margin)
+        cost = round(price * random.uniform(0.3, 0.5), 2)
         
         data.append({
             "product_id": i + 1000, # Start IDs from 1000

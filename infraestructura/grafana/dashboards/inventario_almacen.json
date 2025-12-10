@@ -484,6 +484,149 @@
             ],
             "title": "Detalle inventario",
             "type": "table"
+        },
+        {
+            "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres-almacen"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "currencyEUR"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 24
+            },
+            "id": 8,
+            "options": {
+                "legend": {
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true,
+                    "values": [
+                        "value",
+                        "percent"
+                    ]
+                },
+                "pieType": "donut",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                },
+                "displayLabels": [
+                    "percent"
+                ]
+            },
+            "pluginVersion": "10.4.0",
+            "targets": [
+                {
+                    "dataset": "almacen",
+                    "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "postgres-almacen"
+                    },
+                    "editorMode": "code",
+                    "format": "table",
+                    "rawQuery": true,
+                    "rawSql": "SELECT split_part(c.descripcion, ' ', 1) as metric, SUM(i.cantidad) as value FROM inventario i JOIN catalogo c ON i.product_id = c.product_id GROUP BY 1 ORDER BY value DESC",
+                    "refId": "A"
+                }
+            ],
+            "title": "📦 Stock por Categoría",
+            "type": "piechart"
+        },
+        {
+            "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres-almacen"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "min": 0,
+                    "max": 5000,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "#EAB839",
+                                "value": 4000
+                            },
+                            {
+                                "color": "red",
+                                "value": 4900
+                            }
+                        ]
+                    },
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 32
+            },
+            "id": 9,
+            "options": {
+                "reduceOptions": {
+                    "values": false,
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": ""
+                },
+                "orientation": "auto",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true
+            },
+            "targets": [
+                {
+                    "dataset": "almacen",
+                    "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "postgres-almacen"
+                    },
+                    "editorMode": "code",
+                    "format": "table",
+                    "rawQuery": true,
+                    "rawSql": "SELECT SUM(cantidad) as value FROM inventario",
+                    "refId": "A"
+                }
+            ],
+            "title": "⚠️ Nivel de Ocupación del Almacén",
+            "type": "gauge"
         }
     ],
     "preload": false,
